@@ -1,0 +1,24 @@
+<div class="card setpoint-card" style="border-left: 5px solid #9b59b6;">
+    <h3>SETPOINT (GA)</h3>
+    <div class="value" style="color: #9b59b6;"><span id="setpoint-val">--</span><span class="unit">%</span></div>
+</div>
+
+<button id="btnGA" style="background-color: #9b59b6; color: white;" onclick="triggerGA()">TỐI ƯU LƯỢNG NƯỚC (GA)</button>
+
+<script>
+    // Thêm vào trong script hiện tại của bạn
+    function onMessageArrived(message) {
+        // ... (Logic cũ)
+        if (data.setpoint !== undefined) {
+            document.getElementById("setpoint-val").innerText = data.setpoint;
+        }
+    }
+
+    function triggerGA() {
+        // Gửi lệnh "START_GA" lên MQTT để Script Python trên server nhận được
+        const message = new Paho.MQTT.Message("START_GA");
+        message.destinationName = "esp8266/control/ga"; 
+        client.send(message);
+        alert("Đã yêu cầu thuật toán GA tính toán SetPoint tối ưu!");
+    }
+</script>
