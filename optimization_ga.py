@@ -1,42 +1,41 @@
 import paho.mqtt.client as mqtt
-import requests
 import random
+import os
 
-# Cấu hình HiveMQ
+# Cấu hình MQTT từ GitHub Secrets
 MQTT_SERVER = "f7a99425c8a34f23aba171e48336da3b.s1.eu.hivemq.cloud"
-MQTT_USER = "long140203"
-MQTT_PASS = "Long140203"
+MQTT_USER = os.getenv('MQTT_USER')
+MQTT_PASS = os.getenv('MQTT_PASS')
 
-def get_weather_data():
-    # Giả lập lấy dữ liệu từ OpenWeather API
-    # Dữ liệu thực tế: Ánh sáng mạnh + Nhiệt độ cao -> Cần SetPoint ẩm cao hơn
-    return {"temp_outside": 32, "light_intensity": 800}
-
-def genetic_algorithm(weather):
-    # Hàm fitness: Tìm độ ẩm sao cho cây không bị héo và tiết kiệm nước
-    # Đầu ra là 1 giá trị SetPoint từ 50% - 85%
-    population = [random.uniform(50, 85) for _ in range(20)]
-    for _ in range(10): # Chạy 10 thế hệ
-        # Logic chọn lọc dựa trên dữ liệu thời tiết
-        population = sorted(population, key=lambda x: abs(x - (weather['temp_outside'] * 2)))
+def run_ga_optimization():
+    # Giả lập dữ liệu thời tiết & ánh sáng (có thể dùng API OpenWeatherMap)
+    light_val = 700  # Lux
+    temp_weather = 30 # Độ C
+    
+    # Mục tiêu: Tìm Setpoint độ ẩm (x) tối ưu
+    # Giả sử lý tưởng: Nếu trời nóng & sáng mạnh -> cần độ ẩm cao hơn
+    ideal_humidity = 50 + (temp_weather * 0.5) + (light_val * 0.01)
+    
+    population = [random.uniform(40, 90) for _ in range(50)]
+    
+    for generation in range(100):
+        # Sắp xếp theo độ lệch so với giá trị lý tưởng
+        population.sort(key=lambda x: abs(x - ideal_humidity))
+        # Lai ghép & Đột biến đơn giản
+        parents = population[:10]
+        population = parents + [p + random.uniform(-1, 1) for p in parents for _ in range(4)]
+        
     return round(population[0], 2)
 
-def on_connect(client, userdata, flags, rc):
-    client.subscribe("esp8266/control/ga")
+def publish_setpoint(val):
+    client = mqtt.Client()
+    client.username_pw_set(MQTT_USER, MQTT_PASS)
+    client.tls_set()
+    client.connect(MQTT_SERVER, 8883)
+    client.publish("esp8266/setpoint", str(val))
+    client.disconnect()
 
-def on_message(client, userdata, msg):
-    if msg.payload.decode() == "START_GA":
-        print("Đang chạy thuật toán GA...")
-        weather = get_weather_data()
-        optimal_setpoint = genetic_algorithm(weather)
-        # Gửi SetPoint về cho ESP32
-        client.publish("esp8266/setpoint", str(optimal_setpoint))
-        print(f"Đã gửi SetPoint tối ưu: {optimal_setpoint}")
-
-client = mqtt.Client()
-client.username_pw_set(MQTT_USER, MQTT_PASS)
-client.on_connect = on_connect
-client.on_message = on_message
-client.tls_set()
-client.connect(MQTT_SERVER, 8883)
-client.loop_forever()
+if __name__ == "__main__":
+    result = run_ga_optimization()
+    print(f"Optimal Setpoint found: {result}")
+    publish_setpoint(result)
