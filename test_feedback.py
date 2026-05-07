@@ -2,9 +2,9 @@ import paho.mqtt.client as mqtt
 import os
 
 # Lấy thông tin từ GitHub Secrets để bảo mật
-MQTT_SERVER = os.getenv('MQTT_SERVER')
-MQTT_USER = os.getenv('MQTT_USER')
-MQTT_PASS = os.getenv('MQTT_PASS')
+MQTT_SERVER = os.getenv('f7a99425c8a34f23aba171e48336da3b.s1.eu.hivemq.cloud')
+MQTT_USER = os.getenv('long140203')
+MQTT_PASS = os.getenv('Long140203')
 
 def send_response():
     client = mqtt.Client()
