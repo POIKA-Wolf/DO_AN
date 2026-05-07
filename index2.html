@@ -1,24 +1,31 @@
-<div class="card setpoint-card" style="border-left: 5px solid #9b59b6;">
-    <h3>SETPOINT (GA)</h3>
-    <div class="value" style="color: #9b59b6;"><span id="setpoint-val">--</span><span class="unit">%</span></div>
+<style>
+    .ga-btn { background-color: #9b59b6; color: white; margin-top: 10px; }
+    .setpoint-display { color: #9b59b6; font-size: 1.2em; font-weight: bold; }
+</style>
+
+<div class="control-panel">
+    <h3>Tối ưu hóa AI (GA)</h3>
+    <div class="setpoint-display">Setpoint mục tiêu: <span id="setpoint-val">--</span>%</div>
+    <button class="ga-btn" onclick="triggerGA()">CHẠY THUẬT TOÁN GA</button>
 </div>
 
-<button id="btnGA" style="background-color: #9b59b6; color: white;" onclick="triggerGA()">TỐI ƯU LƯỢNG NƯỚC (GA)</button>
-
 <script>
-    // Thêm vào trong script hiện tại của bạn
-    function onMessageArrived(message) {
-        // ... (Logic cũ)
-        if (data.setpoint !== undefined) {
-            document.getElementById("setpoint-val").innerText = data.setpoint;
-        }
+    function triggerGA() {
+        // Gửi lệnh "RUN_GA" tới GitHub Actions thông qua MQTT
+        const message = new Paho.MQTT.Message("RUN_GA");
+        message.destinationName = "esp8266/control/ga_trigger";
+        client.send(message);
+        alert("Đã gửi yêu cầu tính toán GA lên Server!");
     }
 
-    function triggerGA() {
-        // Gửi lệnh "START_GA" lên MQTT để Script Python trên server nhận được
-        const message = new Paho.MQTT.Message("START_GA");
-        message.destinationName = "esp8266/control/ga"; 
-        client.send(message);
-        alert("Đã yêu cầu thuật toán GA tính toán SetPoint tối ưu!");
+    // Cập nhật hàm onMessageArrived cũ để hiển thị Setpoint
+    function onMessageArrived(message) {
+        const payload = message.payloadString;
+        const data = JSON.parse(payload);
+        
+        if(data.setpoint !== undefined) {
+            document.getElementById("setpoint-val").innerText = data.setpoint;
+        }
+        // ... giữ nguyên logic hiển thị nhiệt độ, độ ẩm cũ ...
     }
 </script>
