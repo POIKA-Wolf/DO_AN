@@ -1,179 +1,1065 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard IOT - DHT11</title>
-    <!-- Thư viện Paho MQTT -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; text-align: center; padding: 20px; }
-        
-        /* CSS cho phần hiển thị cảm biến */
-        .sensor-container {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin: 30px 0;
-            flex-wrap: wrap;
-        }
+<meta charset="UTF-8">
+<title>Smart Irrigation IoT Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
-        .card {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            width: 200px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
+<style>
+*{
+  box-sizing:border-box;
+  font-family:Arial, sans-serif;
+}
 
-        .card h3 { margin: 0; color: #555; font-size: 18px; }
-        .value { font-size: 40px; font-weight: bold; margin: 10px 0; }
-        .unit { font-size: 20px; color: #888; }
-        
-        .temp-card .value { color: #e74c3c; } /* Màu đỏ cho nhiệt độ */
-        .hum-card .value { color: #3498db; }  /* Màu xanh cho độ ẩm */
+body{
+  margin:0;
+  background:#f0f8ef;
+  color:#1f2937;
+}
 
-        /* CSS cho phần điều khiển */
-        .control-panel { margin-top: 30px; padding: 20px; background: white; border-radius: 10px; display: inline-block; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        button { padding: 10px 25px; font-size: 16px; cursor: pointer; border: none; border-radius: 5px; margin: 5px; transition: 0.3s; }
-        .btn-on { background-color: #2ecc71; color: white; }
-        .btn-off { background-color: #e74c3c; color: white; }
-        button:hover { opacity: 0.8; }
-        button:disabled { background-color: #ccc; cursor: not-allowed; }
+header{
+  background:linear-gradient(135deg,#1b5e20,#43a047);
+  color:white;
+  padding:24px;
+  text-align:center;
+}
 
-        #status { font-weight: bold; margin-top: 10px; }
-        .last-update { font-size: 12px; color: #888; margin-top: 5px; }
-        #debug-log { font-size: 12px; color: #aaa; margin-top: 20px; font-family: monospace; }
-    </style>
+header h1{
+  margin:0;
+  font-size:30px;
+}
+
+header p{
+  margin:8px 0 0;
+  color:#e8f5e9;
+}
+
+nav{
+  display:flex;
+  background:#ffffff;
+  border-bottom:1px solid #c8e6c9;
+  box-shadow:0 2px 8px rgba(0,0,0,0.12);
+}
+
+nav button{
+  background:white;
+  color:#2e7d32;
+  border:none;
+  padding:16px 24px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+nav button.active,
+nav button:hover{
+  background:#e8f5e9;
+  color:#1b5e20;
+  border-bottom:4px solid #2e7d32;
+}
+
+.container{
+  padding:24px;
+}
+
+.tab{
+  display:none;
+}
+
+.tab.active{
+  display:block;
+}
+
+.hero{
+  background:linear-gradient(135deg,#ffffff,#e8f5e9);
+  border:1px solid #c8e6c9;
+  border-radius:16px;
+  padding:30px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.12);
+}
+
+.hero h2{
+  color:#1b5e20;
+  margin-top:0;
+}
+
+.hero p{
+  line-height:1.6;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:16px;
+  margin-top:16px;
+}
+
+.card{
+  background:#ffffff;
+  border:1px solid #c8e6c9;
+  border-radius:14px;
+  padding:18px;
+  box-shadow:0 3px 10px rgba(0,0,0,0.10);
+}
+
+.card h3{
+  margin-top:0;
+  color:#2e7d32;
+}
+
+.value{
+  font-size:34px;
+  font-weight:bold;
+  color:#1b5e20;
+}
+
+.unit{
+  color:#6b7280;
+}
+
+.btn{
+  padding:12px 18px;
+  border:none;
+  border-radius:8px;
+  margin:5px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.btn:disabled,
+input:disabled{
+  opacity:0.45;
+  cursor:not-allowed;
+}
+
+.notice{
+  padding:10px 12px;
+  border-radius:8px;
+  background:#e3f2fd;
+  color:#01579b;
+  font-weight:bold;
+}
+
+.table-wrap{
+  width:100%;
+  overflow-x:auto;
+}
+
+.green{background:#2e7d32;color:white;}
+.red{background:#c62828;color:white;}
+.blue{background:#0277bd;color:white;}
+.orange{background:#ef6c00;color:white;}
+
+input[type=range],
+input[type=date],
+select{
+  width:100%;
+  padding:12px;
+  border-radius:8px;
+  border:1px solid #a5d6a7;
+  background:#ffffff;
+  color:#1f2937;
+  font-size:15px;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:16px;
+  background:white;
+}
+
+th,td{
+  padding:12px;
+  border:1px solid #c8e6c9;
+  text-align:center;
+}
+
+th{
+  background:#2e7d32;
+  color:white;
+}
+
+.mqtt-status{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+  background:#ffffff;
+  border-left:6px solid #ef6c00;
+  padding:14px 18px;
+  border-radius:12px;
+  box-shadow:0 3px 10px rgba(0,0,0,0.10);
+  margin-bottom:16px;
+}
+
+.mqtt-status.connected{border-left-color:#2e7d32;}
+.mqtt-status.error{border-left-color:#c62828;}
+
+.badge{
+  padding:8px 12px;
+  border-radius:999px;
+  background:#fff3e0;
+  color:#ef6c00;
+  font-weight:bold;
+}
+
+.badge.connected{background:#e8f5e9;color:#2e7d32;}
+.badge.error{background:#ffebee;color:#c62828;}
+
+.footer{
+  margin-top:28px;
+  text-align:center;
+  color:#2e7d32;
+  font-weight:bold;
+}
+</style>
 </head>
+
 <body>
 
-    <h1>Hệ thống Giám sát & Điều khiển IOT</h1>
-    <div id="status" style="color: orange;">Đang kết nối tới HiveMQ...</div>
+<header>
+  <h1>SMART IRRIGATION IOT DASHBOARD</h1>
+  <p>Nông nghiệp chính xác - LoRa - MQTT - Random Forest - PID</p>
+</header>
 
-    <!-- KHU VỰC HIỂN THỊ CẢM BIẾN -->
-    <div class="sensor-container">
-        <div class="card temp-card">
-            <h3>NHIỆT ĐỘ</h3>
-            <div class="value"><span id="temp-val">--</span><span class="unit">°C</span></div>
-        </div>
-        <div class="card hum-card">
-            <h3>ĐỘ ẨM</h3>
-            <div class="value"><span id="hum-val">--</span><span class="unit">%</span></div>
-        </div>
+<nav>
+  <button class="tabBtn active" onclick="openTab('home',this)">Trang chính</button>
+  <button class="tabBtn" onclick="openTab('monitor',this)">Giám sát</button>
+  <button class="tabBtn" onclick="openTab('control',this)">Điều khiển</button>
+  <button class="tabBtn" onclick="openTab('sensor',this)">Cảm biến</button>
+  <button class="tabBtn" onclick="openTab('weather',this)">Thời tiết</button>
+  <button class="tabBtn" onclick="openTab('database',this)">Cơ sở dữ liệu</button>
+</nav>
+
+<div class="container">
+
+<div id="home" class="tab active">
+  <div class="hero">
+    <h2>Hệ thống tưới tiêu chính xác cho cây cà chua</h2>
+    <p>
+      Sinh viên thực hiện : Phan Thành Long
+    </p>
+    <p>Giáo viên hướng dẫn : PGS.TS Nguyễn Thanh Hải</p>
+   
+    
+  </div>
+
+  <div class="grid">
+    <div class="card"><h3>LoRa Node</h3><p>Thu thập dữ liệu cảm biến ngoài vườn.</p></div>
+    <div class="card"><h3>Random Forest</h3><p>Dự đoán độ ẩm cần thiết mỗi 6 giờ.</p></div>
+    <div class="card"><h3>PID Pump Control</h3><p>Điều khiển PWM bơm nước chính xác.</p></div>
+  </div>
+</div>
+
+<div id="monitor" class="tab">
+  <h2>Giám sát dữ liệu cảm biến</h2>
+
+  <div class="mqtt-status" id="mqttBox">
+    <div>
+      <b>Kết nối MQTT:</b> <span id="mqttText">Đang kết nối HiveMQ Broker...</span><br>
+      <small>Nhận: <b>esp32/sensor/data</b>, <b>esp32/weather/data</b>, <b>esp32/weather/forecast</b>, <b>esp32/control</b>, <b>esp32/db/status</b>, <b>esp32/db/recent</b> | Gửi: <b>esp32/plant/stage</b>, <b>esp32/prediction/test</b>, <b>esp32/control</b></small>
     </div>
-    <div class="last-update">Cập nhật lần cuối: <span id="last-time">Chưa có dữ liệu</span></div>
+    <span class="badge" id="mqttBadge">CONNECTING</span>
+  </div>
 
-    <!-- KHU VỰC ĐIỀU KHIỂN -->
-    <div class="control-panel">
-        <h3>Điều khiển Thiết bị</h3>
-        <button id="btnOn" class="btn-on" onclick="sendCMD('ON')" disabled>BẬT ĐÈN</button>
-        <button id="btnOff" class="btn-off" onclick="sendCMD('OFF')" disabled>TẮT ĐÈN</button>
-        <div id="log" style="margin-top: 10px; font-size: 14px; color: gray;"></div>
+  <div class="grid">
+    <div class="card"><h3>Nhiệt độ</h3><div class="value" id="temp">--</div><div class="unit">°C</div></div>
+    <div class="card"><h3>Độ ẩm không khí</h3><div class="value" id="hum">--</div><div class="unit">%</div></div>
+    <div class="card"><h3>Độ ẩm đất</h3><div class="value" id="soil">--</div><div class="unit">%</div></div>
+    <div class="card"><h3>Ánh sáng</h3><div class="value" id="light">--</div><div class="unit">lux</div></div>
+    <div class="card"><h3>Mưa</h3><div class="value" id="rain">--</div><div class="unit">Trạng thái</div></div>
+    <div class="card"><h3>Lượng mưa</h3><div class="value" id="rainMm">--</div><div class="unit">mm</div></div>
+    <div class="card"><h3>Độ ẩm cần thiết</h3><div class="value" id="target">--</div><div class="unit">%</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Cập nhật mô hình</h3>
+      <p>Lần cập nhật gần nhất:</p>
+      <div class="value" id="lastPredictionTime">--</div>
+      <p>Lần cập nhật tiếp theo:</p>
+      <div class="value" id="nextPredictionTime">Tự động khi có sensor hoặc bấm test</div>
+      <button class="btn orange" onclick="requestPredictionTest()">Test dự đoán RF</button>
+      <p id="predictionStatus">Chưa gửi yêu cầu test</p>
     </div>
 
-    <div id="debug-log">Log dữ liệu nhận được sẽ hiện ở đây...</div>
+    <div class="card">
+      <h3>Cơ sở dữ liệu</h3>
+      <p>File SQLite:</p>
+      <div class="value" id="dbName" style="font-size:20px">--</div>
+      <p>Tổng bản ghi:</p>
+      <div class="value" id="dbTotal">--</div>
+      <p>Cập nhật:</p>
+      <div id="dbUpdated">--</div>
+    </div>
+  </div>
 
-    <script>
-        // --- CẤU HÌNH ---
-        const mqtt_server = "f7a99425c8a34f23aba171e48336da3b.s1.eu.hivemq.cloud";
-        const mqtt_port = 8884; // WebSocket Port
-        const mqtt_user = "long140203";
-        const mqtt_pass = "Long140203";
-        
-        const topic_pub = "esp8266/client"; // Gửi lệnh đi
-        
-        // ĐÃ SỬA: Cập nhật đúng topic theo log bạn gửi
-        const topic_sub = "esp8266/dht11";   
+  <div class="card" style="margin-top:20px">
+    <h3>Giai đoạn phát triển cây cà chua</h3>
 
-        // Tạo Client
-        const clientId = "WebMonitor-" + Math.random().toString(16).substr(2, 8);
-        const client = new Paho.MQTT.Client(mqtt_server, mqtt_port, clientId);
+    <label>Ngày gieo hạt</label>
+    <input type="date" id="plantDate" onchange="calculateGrowthStage()">
 
-        // Gán các hàm callback (Xử lý sự kiện)
-        client.onConnectionLost = onConnectionLost;
-        client.onMessageArrived = onMessageArrived;
+    <br><br>
 
-        // Cấu hình kết nối
-        const connectOptions = {
-            useSSL: true,
-            userName: mqtt_user,
-            password: mqtt_pass,
-            onSuccess: onConnect,
-            onFailure: onFailure
-        };
+    <label>
+      <input type="checkbox" id="manualStageCheck" onchange="toggleManualStage()">
+      Chọn giai đoạn thủ công
+    </label>
 
-        // Bắt đầu kết nối
-        client.connect(connectOptions);
+    <br><br>
 
-        // --- CÁC HÀM XỬ LÝ ---
+    <select id="manualStage" onchange="setManualStage()" disabled>
+      <option value="seedling">Cây con</option>
+      <option value="vegetative">Sinh trưởng thân lá</option>
+      <option value="flowering">Ra hoa</option>
+      <option value="fruiting">Ra quả</option>
+      <option value="harvest">Thu hoạch</option>
+    </select>
 
-        function onConnect() {
-            console.log("Connected to HiveMQ");
-            document.getElementById("status").innerHTML = "● Đã kết nối hệ thống";
-            document.getElementById("status").style.color = "green";
-            
-            // Kích hoạt nút bấm
-            document.getElementById("btnOn").disabled = false;
-            document.getElementById("btnOff").disabled = false;
+    <div class="grid">
+      <div class="card"><h3>Số ngày sau gieo</h3><div class="value" id="daysAfterPlanting">--</div></div>
+      <div class="card"><h3>Giai đoạn hiện tại</h3><div class="value" id="growthStage">--</div></div>
+      <div class="card"><h3>Độ ẩm theo giai đoạn</h3><div class="value" id="growthTarget">60</div><div class="unit">%</div></div>
+    </div>
+  </div>
+</div>
 
-            // Đăng ký nhận tin nhắn từ cảm biến
-            client.subscribe(topic_sub);
-            console.log("Đã đăng ký topic: " + topic_sub);
-        }
+<div id="control" class="tab">
+  <h2>Điều khiển hệ thống tưới</h2>
 
-        function onFailure(responseObject) {
-            console.log("Connect failed: " + responseObject.errorMessage);
-            document.getElementById("status").innerHTML = "Lỗi kết nối: " + responseObject.errorMessage;
-            document.getElementById("status").style.color = "red";
-        }
+  <div class="grid">
+    <div class="card">
+      <h3>Chế độ hoạt động</h3>
+      <p>Mode: <b id="modeLabel">AUTO</b></p>
+      <button class="btn blue" id="autoBtn" onclick="setMode('AUTO')">AUTO</button>
+      <button class="btn red" id="manualBtn" onclick="setMode('MANUAL')">MANUAL</button>
+    </div>
 
-        function onConnectionLost(responseObject) {
-            if (responseObject.errorCode !== 0) {
-                console.log("Connection lost: " + responseObject.errorMessage);
-                document.getElementById("status").innerHTML = "Mất kết nối!";
-                document.getElementById("status").style.color = "red";
-            }
-        }
+    <div class="card">
+      <h3>Trạng thái bơm</h3>
+      <p><b id="pumpStatus">AUTO PID</b></p>
+      <button class="btn green" id="pumpOnBtn" onclick="pumpOn()">Bật bơm</button>
+      <button class="btn red" id="pumpOffBtn" onclick="pumpOff()">Tắt bơm</button>
+      <p class="notice" id="manualNotice">AUTO đang dùng PID. Bật/tắt bơm thủ công chỉ dùng trong MANUAL.</p>
+    </div>
 
-        // HÀM QUAN TRỌNG: Xử lý khi có tin nhắn mới từ ESP32 gửi lên
-        function onMessageArrived(message) {
-            const payload = message.payloadString;
-            console.log("Nhận tin nhắn: " + payload);
-            document.getElementById("debug-log").innerText = "Nhận từ [" + message.destinationName + "]: " + payload;
-            
-            // Chỉ xử lý nếu tin nhắn đến từ topic cảm biến
-            if (message.destinationName === topic_sub) {
-                try {
-                    // JSON mẫu: {"humidity":22,"temperature":33.7}
-                    const data = JSON.parse(payload);
-                    
-                    // ĐÃ SỬA: Đổi key thành 'temperature' và 'humidity' cho khớp với JSON
-                    if(data.temperature !== undefined) {
-                        document.getElementById("temp-val").innerText = data.temperature;
-                    }
-                    
-                    if(data.humidity !== undefined) {
-                        document.getElementById("hum-val").innerText = data.humidity;
-                    }
+    <div class="card">
+      <h3>PWM điều khiển</h3>
+      <p>PWM: <b id="pwmValue">0</b></p>
+      <input type="range" min="0" max="255" value="0" id="slider" oninput="manualPWM(this.value)" disabled>
+    </div>
+  </div>
+</div>
 
-                    // Cập nhật thời gian
-                    const now = new Date();
-                    document.getElementById("last-time").innerText = now.toLocaleTimeString();
+<div id="sensor" class="tab">
+  <h2>Thiết bị và cảm biến</h2>
 
-                } catch (e) {
-                    console.error("Lỗi phân tích dữ liệu JSON: ", e);
-                }
-            }
-        }
+  <div class="grid">
+    <div class="card"><h3>Node 1</h3><p>Gửi dữ liệu cảm biến về Gateway.</p></div>
+    <div class="card"><h3>Node 2</h3><p>Gửi dữ liệu cảm biến và nhận tín hiệu điều khiển.</p></div>
+    <div class="card"><h3>ESP32 Gateway</h3><p>Nhận LoRa và gửi dữ liệu lên MQTT.</p></div>
+    <div class="card"><h3>MQTT Broker</h3><p>Kết nối ESP32, Web và chương trình ML.</p></div>
+    <div class="card"><h3>Bơm nước</h3><p>Điều khiển bằng PWM thông qua L298N.</p></div>
+    <div class="card"><h3>Cảm biến</h3><p>Nhiệt độ, độ ẩm, đất, ánh sáng, mưa.</p></div>
+  </div>
+</div>
 
-        // Hàm gửi lệnh điều khiển
-        function sendCMD(cmd) {
-            const message = new Paho.MQTT.Message(cmd);
-            message.destinationName = topic_pub;
-            client.send(message);
-            document.getElementById("log").innerText = "Đã gửi lệnh: " + cmd;
-        }
-    </script>
+<div id="weather" class="tab">
+  <h2>Dự báo thời tiết 5 ngày</h2>
+
+  <div class="mqtt-status connected">
+    <div>
+      <b>Nguồn dự báo:</b> Python Backend → Open-Meteo → HiveMQ topic <b>esp32/weather/forecast</b><br>
+      <small>Cập nhật gần nhất: <span id="forecastUpdated">--</span></small>
+    </div>
+    <span class="badge connected" id="forecastBadge">WAITING</span>
+  </div>
+
+  <table id="weatherForecastTable">
+    <thead>
+      <tr>
+        <th>Ngày</th>
+        <th>Nhiệt độ</th>
+        <th>Độ ẩm</th>
+        <th>Thời tiết</th>
+        <th>Xác suất mưa</th>
+        <th>Lượng mưa</th>
+      </tr>
+    </thead>
+    <tbody id="weatherForecastBody">
+      <tr><td colspan="6">Đang chờ dữ liệu dự báo từ HiveMQ...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div id="database" class="tab">
+  <h2>Cơ sở dữ liệu SQLite</h2>
+
+  <div class="mqtt-status connected">
+    <div>
+      <b>File database chạy trên máy Python:</b> <span id="dbNameFull">iot_irrigation.db</span><br>
+      <small>Web không mở trực tiếp file SQLite. Python đọc database và publish tóm tắt lên HiveMQ topic <b>esp32/db/status</b>, <b>esp32/db/recent</b>.</small>
+    </div>
+    <span class="badge connected" id="dbBadge">WAITING</span>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Tổng bản ghi</h3>
+      <div class="value" id="dbTotal2">--</div>
+      <div class="unit">records</div>
+    </div>
+    <div class="card">
+      <h3>Cập nhật gần nhất</h3>
+      <div id="dbUpdated2">--</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <h3>Số bản ghi theo bảng</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Bảng</th><th>Số bản ghi</th></tr></thead>
+        <tbody id="dbTableCountBody"><tr><td colspan="2">Đang chờ dữ liệu...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <h3>Dữ liệu mới nhất</h3>
+    <label>Chọn bảng</label>
+    <select id="dbRecentSelect" onchange="renderSelectedDbRecent()">
+      <option value="sensor_data">sensor_data</option>
+      <option value="weather_current">weather_current</option>
+      <option value="weather_forecast">weather_forecast</option>
+      <option value="plant_stage_log">plant_stage_log</option>
+      <option value="prediction_log">prediction_log</option>
+      <option value="control_log">control_log</option>
+    </select>
+    <div class="table-wrap">
+      <table>
+        <thead id="dbRecentHead"><tr><th>Trạng thái</th></tr></thead>
+        <tbody id="dbRecentBody"><tr><td>Đang chờ dữ liệu...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Thiết kế web: Phan Thành Long
+</div>
+
+</div>
+
+<script>
+let mode = "AUTO";
+let pwm = 0;
+
+let growthMode = "AUTO";
+let currentGrowthTarget = 60;
+let predictedTarget = 60;
+
+let currentPlantStage = "fruiting";
+let currentPlantStageCode = 3;
+
+let latestSensorData = null;
+let latestWeatherData = {
+  rain: 0,
+  rain_mm: 0
+};
+
+let lastPredictionTime = null;
+
+// ================= MQTT CONFIG =================
+const MQTT_HOST = "wss://f7a99425c8a34f23aba171e48336da3b.s1.eu.hivemq.cloud:8884/mqtt";
+const MQTT_USERNAME = "long140203";
+const MQTT_PASSWORD = "Long140203";
+
+// ESP32 Gateway publish dữ liệu cảm biến thật
+const SENSOR_TOPIC = "esp32/sensor/data";
+
+// Python Backend publish mưa hay không + lượng mưa
+const WEATHER_TOPIC = "esp32/weather/data";
+
+// Python Backend publish bảng dự báo thời tiết 5 ngày
+const WEATHER_FORECAST_TOPIC = "esp32/weather/forecast";
+
+// Web publish giai đoạn phát triển cây
+const PLANT_STAGE_TOPIC = "esp32/plant/stage";
+
+// Web nhấn nút test → Python chạy Random Forest
+const PREDICT_TEST_TOPIC = "esp32/prediction/test";
+
+// Python gửi target RF và Web gửi MANUAL/AUTO, ON/OFF xuống LoRa 2 qua ESP32 Gateway
+const CONTROL_TOPIC = "esp32/control";
+
+// Python publish trạng thái cơ sở dữ liệu SQLite
+const DB_STATUS_TOPIC = "esp32/db/status";
+const DB_RECENT_TOPIC = "esp32/db/recent";
+
+// Topic cũ, giữ lại để tương thích nếu Python còn publish result
+const PREDICTION_RESULT_TOPIC = "esp32/prediction/result";
+
+const mqttOptions = {
+  username: MQTT_USERNAME,
+  password: MQTT_PASSWORD,
+  clean: true,
+  connectTimeout: 5000,
+  reconnectPeriod: 2000,
+  clientId: "WebDashboard_" + Math.random().toString(16).substring(2, 10)
+};
+
+const mqttClient = mqtt.connect(MQTT_HOST, mqttOptions);
+
+// ================= MQTT STATUS =================
+function setMqttStatus(text, status){
+  const box = document.getElementById("mqttBox");
+  const label = document.getElementById("mqttText");
+  const badge = document.getElementById("mqttBadge");
+
+  if(!box || !label || !badge) return;
+
+  label.innerText = text;
+  badge.innerText = status;
+
+  box.className = "mqtt-status";
+  badge.className = "badge";
+
+  if(status === "CONNECTED"){
+    box.classList.add("connected");
+    badge.classList.add("connected");
+  }
+  else if(status === "ERROR" || status === "OFFLINE"){
+    box.classList.add("error");
+    badge.classList.add("error");
+  }
+}
+
+mqttClient.on("connect", function(){
+  setMqttStatus("Đã kết nối HiveMQ Broker", "CONNECTED");
+
+  mqttClient.subscribe(SENSOR_TOPIC);
+  mqttClient.subscribe(WEATHER_TOPIC);
+  mqttClient.subscribe(WEATHER_FORECAST_TOPIC);
+  mqttClient.subscribe(CONTROL_TOPIC);
+  mqttClient.subscribe(DB_STATUS_TOPIC);
+  mqttClient.subscribe(DB_RECENT_TOPIC);
+  mqttClient.subscribe(PREDICTION_RESULT_TOPIC);
+
+  console.log("Subscribed:", SENSOR_TOPIC);
+  console.log("Subscribed:", WEATHER_TOPIC);
+  console.log("Subscribed:", WEATHER_FORECAST_TOPIC);
+  console.log("Subscribed:", CONTROL_TOPIC);
+  console.log("Subscribed:", DB_STATUS_TOPIC);
+  console.log("Subscribed:", DB_RECENT_TOPIC);
+  console.log("Subscribed:", PREDICTION_RESULT_TOPIC);
+
+  // Gửi giai đoạn cây hiện tại lên MQTT, retain=true để Python khởi động sau vẫn nhận được
+  publishPlantStage();
+});
+
+mqttClient.on("message", function(topic, message){
+  try{
+    const data = JSON.parse(message.toString());
+
+    if(topic === SENSOR_TOPIC){
+      updateSensorFromMQTT(data);
+    }
+    else if(topic === WEATHER_TOPIC){
+      updateWeatherFromMQTT(data);
+    }
+    else if(topic === WEATHER_FORECAST_TOPIC){
+      updateWeatherForecast(data);
+    }
+    else if(topic === CONTROL_TOPIC){
+      updateControlFromMQTT(data);
+    }
+    else if(topic === DB_STATUS_TOPIC){
+      updateDatabaseStatus(data);
+    }
+    else if(topic === DB_RECENT_TOPIC){
+      updateDatabaseRecent(data);
+    }
+    else if(topic === PREDICTION_RESULT_TOPIC){
+      updatePredictionResult(data);
+    }
+
+  }catch(error){
+    console.log("Lỗi JSON MQTT:", error);
+    console.log("Topic:", topic);
+    console.log("Payload nhận được:", message.toString());
+  }
+});
+
+mqttClient.on("reconnect", function(){
+  setMqttStatus("Đang kết nối lại HiveMQ Broker...", "CONNECTING");
+});
+
+mqttClient.on("offline", function(){
+  setMqttStatus("MQTT đang offline", "OFFLINE");
+});
+
+mqttClient.on("error", function(error){
+  setMqttStatus("Lỗi kết nối MQTT", "ERROR");
+  console.log("MQTT error:", error);
+});
+
+function publishMQTT(topic, payload, retain=false){
+  if(!mqttClient.connected){
+    alert("Web chưa kết nối MQTT Broker");
+    return false;
+  }
+
+  mqttClient.publish(topic, JSON.stringify(payload), {retain: retain});
+  console.log("Publish", topic, payload);
+  return true;
+}
+
+// ================= TAB =================
+function openTab(tabId, btn){
+  document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+  document.querySelectorAll(".tabBtn").forEach(button => button.classList.remove("active"));
+  document.getElementById(tabId).classList.add("active");
+  btn.classList.add("active");
+}
+
+// ================= CONTROL SEND TO LORA 2 =================
+function publishControl(payload){
+  return publishMQTT(CONTROL_TOPIC, payload, false);
+}
+
+function updateControlButtons(){
+  const isManual = mode === "MANUAL";
+  const pumpOnBtn = document.getElementById("pumpOnBtn");
+  const pumpOffBtn = document.getElementById("pumpOffBtn");
+  const slider = document.getElementById("slider");
+  const notice = document.getElementById("manualNotice");
+
+  if(pumpOnBtn) pumpOnBtn.disabled = !isManual;
+  if(pumpOffBtn) pumpOffBtn.disabled = !isManual;
+  if(slider) slider.disabled = !isManual;
+
+  if(notice){
+    notice.innerText = isManual
+      ? "MANUAL: có thể bật/tắt bơm và chỉnh PWM thủ công."
+      : "AUTO đang dùng PID. Bật/tắt bơm thủ công bị khóa.";
+  }
+
+  document.getElementById("modeLabel").innerText = mode;
+
+  if(!isManual){
+    document.getElementById("pumpStatus").innerText = "AUTO PID";
+  }
+}
+
+function setMode(m){
+  mode = String(m).toUpperCase();
+
+  if(mode === "AUTO"){
+    // AUTO chỉ gửi mode. Không gửi pump ON/OFF để tránh bật bơm thủ công.
+    publishControl({mode:"AUTO"});
+    updateControlButtons();
+    return;
+  }
+
+  // Khi chuyển sang MANUAL, mặc định tắt bơm để an toàn.
+  mode = "MANUAL";
+  setPWM(0);
+  document.getElementById("pumpStatus").innerText = "OFF";
+  updateControlButtons();
+  publishControl({mode:"MANUAL", pump:"OFF", pwm:0});
+}
+
+function setPWM(v){
+  pwm = Number(v);
+  if(Number.isNaN(pwm)) pwm = 0;
+  pwm = Math.max(0, Math.min(255, pwm));
+
+  document.getElementById("pwmValue").innerText = pwm;
+  document.getElementById("slider").value = pwm;
+}
+
+function manualPWM(v){
+  if(mode !== "MANUAL"){
+    alert("AUTO đang dùng PID. Muốn chỉnh PWM hãy chuyển sang MANUAL trước.");
+    document.getElementById("slider").value = pwm;
+    return;
+  }
+
+  setPWM(v);
+  const pumpState = pwm > 0 ? "ON" : "OFF";
+  document.getElementById("pumpStatus").innerText = pumpState;
+  publishControl({mode:"MANUAL", pump:pumpState, pwm:pwm});
+}
+
+function pumpOn(){
+  if(mode !== "MANUAL"){
+    alert("AUTO đang dùng PID nên không được bật bơm thủ công. Hãy bấm MANUAL trước.");
+    return;
+  }
+
+  if(pwm <= 0) setPWM(255);
+  document.getElementById("pumpStatus").innerText = "ON";
+  publishControl({mode:"MANUAL", pump:"ON", pwm:pwm});
+}
+
+function pumpOff(){
+  if(mode !== "MANUAL"){
+    alert("AUTO đang dùng PID nên không được tắt/bật bơm thủ công. Hãy bấm MANUAL trước.");
+    return;
+  }
+
+  setPWM(0);
+  document.getElementById("pumpStatus").innerText = "OFF";
+  publishControl({mode:"MANUAL", pump:"OFF", pwm:0});
+}
+
+// ================= GROWTH STAGE =================
+const PLANT_STAGE_MAP = {
+  seedling: {name:"Cây con", target:70, code:0},
+  vegetative: {name:"Sinh trưởng thân lá", target:65, code:1},
+  flowering: {name:"Ra hoa", target:60, code:2},
+  fruiting: {name:"Ra quả", target:68, code:3},
+  harvest: {name:"Thu hoạch", target:55, code:4}
+};
+
+function getStageByDays(days){
+  if(days <= 20) return {key:"seedling", ...PLANT_STAGE_MAP.seedling};
+  if(days <= 45) return {key:"vegetative", ...PLANT_STAGE_MAP.vegetative};
+  if(days <= 65) return {key:"flowering", ...PLANT_STAGE_MAP.flowering};
+  if(days <= 100) return {key:"fruiting", ...PLANT_STAGE_MAP.fruiting};
+  return {key:"harvest", ...PLANT_STAGE_MAP.harvest};
+}
+
+function applyGrowthStage(stageKey, daysText){
+  const stage = PLANT_STAGE_MAP[stageKey];
+  if(!stage) return;
+
+  currentPlantStage = stageKey;
+  currentPlantStageCode = stage.code;
+  currentGrowthTarget = stage.target;
+
+  document.getElementById("daysAfterPlanting").innerText = daysText;
+  document.getElementById("growthStage").innerText = stage.name;
+  document.getElementById("growthTarget").innerText = stage.target;
+}
+
+function calculateGrowthStage(){
+  if(growthMode === "MANUAL") return;
+
+  let plantDate = document.getElementById("plantDate").value;
+  if(!plantDate) return;
+
+  let start = new Date(plantDate);
+  let today = new Date();
+  let days = Math.floor((today - start) / (1000 * 60 * 60 * 24));
+  if(days < 0) days = 0;
+
+  let stage = getStageByDays(days);
+  applyGrowthStage(stage.key, days);
+
+  publishPlantStage();
+}
+
+function toggleManualStage(){
+  let checked = document.getElementById("manualStageCheck").checked;
+  let select = document.getElementById("manualStage");
+
+  if(checked){
+    growthMode = "MANUAL";
+    select.disabled = false;
+    setManualStage();
+  }else{
+    growthMode = "AUTO";
+    select.disabled = true;
+    calculateGrowthStage();
+  }
+}
+
+function setManualStage(){
+  let value = document.getElementById("manualStage").value;
+
+  applyGrowthStage(value, "Thủ công");
+  publishPlantStage();
+}
+
+function publishPlantStage(){
+  const payload = {
+    plant_stage: currentPlantStage,
+    plant_stage_code: currentPlantStageCode,
+    growth_target: currentGrowthTarget,
+    growth_mode: growthMode,
+    source: "web"
+  };
+
+  publishMQTT(PLANT_STAGE_TOPIC, payload, true);
+}
+
+// ================= SENSOR DISPLAY =================
+function updateSensorFromMQTT(data){
+  // ESP32 gửi:
+  // temperature, humidity, light, soil_percent
+
+  const temp = Number(data.temperature ?? data.temp ?? 0);
+  const hum = Number(data.humidity ?? data.air_humidity ?? data.hum ?? 0);
+  const soil = Number(data.soil_percent ?? data.soil_moisture ?? data.soil ?? 0);
+  const light = Number(data.light ?? 0);
+
+  latestSensorData = {
+    temperature: temp,
+    humidity: hum,
+    light: light,
+    soil_percent: soil
+  };
+
+  document.getElementById("temp").innerText = temp.toFixed(1);
+  document.getElementById("hum").innerText = hum.toFixed(1);
+  document.getElementById("soil").innerText = soil.toFixed(1);
+  document.getElementById("light").innerText = light;
+
+  // Nếu LoRa 2 gửi thêm target/mode/pump_pwm về trong sensor JSON thì hiển thị luôn
+  if(data.target !== undefined){
+    predictedTarget = Number(data.target);
+    document.getElementById("target").innerText = predictedTarget.toFixed(1);
+  }
+
+  if(data.mode !== undefined){
+    mode = String(data.mode).toUpperCase();
+    updateControlButtons();
+  }
+
+  if(data.pump_pwm !== undefined){
+    const nodePwm = Number(data.pump_pwm);
+    document.getElementById("pwmValue").innerText = nodePwm;
+    if(mode === "MANUAL") document.getElementById("slider").value = nodePwm;
+    document.getElementById("pumpStatus").innerText = nodePwm > 0 ? (mode === "AUTO" ? "AUTO PID ON" : "ON") : (mode === "AUTO" ? "AUTO PID OFF" : "OFF");
+  }
+}
+
+// ================= WEATHER DISPLAY =================
+function updateWeatherFromMQTT(data){
+  // Python gửi:
+  // rain: 0/1
+  // rain_mm: lượng mưa
+
+  const rainValue = Number(data.rain ?? 0);
+  const rainMm = Number(data.rain_mm ?? 0);
+
+  latestWeatherData = {
+    rain: rainValue,
+    rain_mm: rainMm
+  };
+
+  document.getElementById("rain").innerText = rainValue === 1 ? "Có mưa" : "Không mưa";
+
+  const rainMmElement = document.getElementById("rainMm");
+  if(rainMmElement){
+    rainMmElement.innerText = rainMm.toFixed(1);
+  }
+}
+
+
+// ================= WEATHER FORECAST TABLE =================
+function updateWeatherForecast(data){
+  const body = document.getElementById("weatherForecastBody");
+  if(!body) return;
+
+  const daily = Array.isArray(data.daily) ? data.daily : [];
+  const updated = data.updated_at ?? "--";
+
+  document.getElementById("forecastUpdated").innerText = updated;
+  document.getElementById("forecastBadge").innerText = daily.length > 0 ? "UPDATED" : "NO DATA";
+
+  if(daily.length === 0){
+    body.innerHTML = '<tr><td colspan="6">Chưa có dữ liệu dự báo</td></tr>';
+    return;
+  }
+
+  body.innerHTML = daily.map(item => {
+    const date = item.date ?? "--";
+    const tMin = item.temp_min ?? "--";
+    const tMax = item.temp_max ?? "--";
+    const humidity = item.humidity ?? "--";
+    const weather = item.weather ?? "--";
+    const pop = item.precipitation_probability ?? "--";
+    const rain = item.rain_mm ?? 0;
+
+    return `
+      <tr>
+        <td>${date}</td>
+        <td>${tMin} - ${tMax} °C</td>
+        <td>${humidity} %</td>
+        <td>${weather}</td>
+        <td>${pop} %</td>
+        <td>${Number(rain).toFixed(1)} mm</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+// ================= CONTROL FEEDBACK FROM MQTT =================
+function updateControlFromMQTT(data){
+  // Python RF chỉ gửi {target:...}; không đổi mode và không bật bơm thủ công.
+  if(data.target !== undefined){
+    predictedTarget = Number(data.target);
+    document.getElementById("target").innerText = predictedTarget.toFixed(1);
+    document.getElementById("predictionStatus").innerText = "Đã nhận target RF từ esp32/control";
+    lastPredictionTime = new Date();
+    document.getElementById("lastPredictionTime").innerText = formatTime(lastPredictionTime);
+  }
+
+  if(data.mode !== undefined){
+    mode = String(data.mode).toUpperCase();
+    if(mode !== "AUTO" && mode !== "MANUAL") mode = "AUTO";
+    updateControlButtons();
+  }
+
+  if(mode === "MANUAL"){
+    if(data.pwm !== undefined){
+      setPWM(Number(data.pwm));
+    }
+
+    if(data.pump !== undefined){
+      document.getElementById("pumpStatus").innerText = String(data.pump).toUpperCase();
+    }
+  }
+}
+
+// ================= DATABASE STATUS =================
+let latestDbRecent = null;
+
+function updateDatabaseStatus(data){
+  const tables = data.tables ?? {};
+  const total = Object.values(tables).reduce((sum, value) => sum + Number(value || 0), 0);
+
+  const databaseName = data.database ?? "iot_irrigation.db";
+  const updated = data.updated_at ?? "--";
+
+  const dbName = document.getElementById("dbName");
+  const dbTotal = document.getElementById("dbTotal");
+  const dbUpdated = document.getElementById("dbUpdated");
+
+  if(dbName) dbName.innerText = databaseName;
+  if(dbTotal) dbTotal.innerText = total;
+  if(dbUpdated) dbUpdated.innerText = updated;
+
+  const dbNameFull = document.getElementById("dbNameFull");
+  const dbTotal2 = document.getElementById("dbTotal2");
+  const dbUpdated2 = document.getElementById("dbUpdated2");
+  const dbBadge = document.getElementById("dbBadge");
+
+  if(dbNameFull) dbNameFull.innerText = databaseName;
+  if(dbTotal2) dbTotal2.innerText = total;
+  if(dbUpdated2) dbUpdated2.innerText = updated;
+  if(dbBadge) dbBadge.innerText = "UPDATED";
+
+  const countBody = document.getElementById("dbTableCountBody");
+  if(countBody){
+    const rows = Object.entries(tables).map(([table, count]) => `
+      <tr><td>${table}</td><td>${count}</td></tr>
+    `).join("");
+    countBody.innerHTML = rows || '<tr><td colspan="2">Chưa có dữ liệu</td></tr>';
+  }
+}
+
+function updateDatabaseRecent(data){
+  latestDbRecent = data.recent ?? {};
+  renderSelectedDbRecent();
+}
+
+function renderSelectedDbRecent(){
+  const select = document.getElementById("dbRecentSelect");
+  const head = document.getElementById("dbRecentHead");
+  const body = document.getElementById("dbRecentBody");
+
+  if(!select || !head || !body) return;
+
+  const table = select.value;
+  const rows = latestDbRecent && Array.isArray(latestDbRecent[table]) ? latestDbRecent[table] : [];
+
+  if(rows.length === 0){
+    head.innerHTML = '<tr><th>Trạng thái</th></tr>';
+    body.innerHTML = '<tr><td>Chưa có dữ liệu</td></tr>';
+    return;
+  }
+
+  const columns = Object.keys(rows[0]).filter(col => col !== "raw_json" && !col.endsWith("_json"));
+
+  head.innerHTML = '<tr>' + columns.map(col => `<th>${col}</th>`).join("") + '</tr>';
+
+  body.innerHTML = rows.map(row => {
+    return '<tr>' + columns.map(col => {
+      let value = row[col];
+      if(value === null || value === undefined) value = "";
+      return `<td>${value}</td>`;
+    }).join("") + '</tr>';
+  }).join("");
+}
+
+// ================= TEST RANDOM FOREST PREDICTION =================
+function requestPredictionTest(){
+  // Nút test chỉ gửi tín hiệu yêu cầu dự đoán.
+  // Sensor/weather/stage sẽ được Python lấy trực tiếp từ các topic MQTT:
+  // esp32/sensor/data, esp32/weather/data, esp32/plant/stage
+
+  if(!latestSensorData){
+    alert("Chưa có dữ liệu cảm biến từ esp32/sensor/data");
+    return;
+  }
+
+  if(!latestWeatherData){
+    alert("Chưa có dữ liệu thời tiết từ esp32/weather/data");
+    return;
+  }
+
+  // Gửi giai đoạn cây lên topic riêng trước khi yêu cầu RF chạy.
+  // Topic này dùng retain=true để Python luôn có giá trị mới nhất.
+  publishPlantStage();
+
+  const requestId = "test_" + Date.now();
+
+  const payload = {
+    request_id: requestId,
+    source: "web",
+    command: "RUN_RF_PREDICTION",
+    requested_at: new Date().toISOString()
+  };
+
+  const ok = publishMQTT(PREDICT_TEST_TOPIC, payload, false);
+
+  if(ok){
+    document.getElementById("predictionStatus").innerText = "Đã gửi yêu cầu test: " + requestId;
+  }
+}
+
+function updatePredictionResult(data){
+  if(data.target !== undefined){
+    predictedTarget = Number(data.target);
+    document.getElementById("target").innerText = predictedTarget.toFixed(1);
+  }
+
+  lastPredictionTime = new Date();
+
+  document.getElementById("lastPredictionTime").innerText = formatTime(lastPredictionTime);
+  document.getElementById("nextPredictionTime").innerText = "Chỉ khi bấm test";
+
+  const status = document.getElementById("predictionStatus");
+  if(status){
+    const requestId = data.request_id ?? "--";
+    status.innerText = "Đã nhận kết quả RF: " + requestId;
+  }
+}
+
+function formatTime(date){
+  if(!date) return "--";
+  return date.toLocaleString("vi-VN");
+}
+
+setMqttStatus("Đang kết nối HiveMQ Broker...", "CONNECTING");
+updateControlButtons();
+</script>
+
 </body>
 </html>
